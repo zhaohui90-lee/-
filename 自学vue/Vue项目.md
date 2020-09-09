@@ -40,6 +40,8 @@ function myAsyncFunction(url) {
     xhr.onload = () => resolve(xhr.responseText);
     xhr.onerror = () => reject(xhr.statusText);
     xhr.send();
+      
+      
   });
 };
 ```
