@@ -459,19 +459,195 @@ const moudleA = {
 
 #### 3.1 网络请求方式的选择
 
+- jquery.ajax
+- axios.get axios.post
+
 #### 3.2 axios的基本使用
+
+##### 3.2.1 创建实例
+
+axios.create([config])
+
+```javascript
+const instance = axios.create({
+    baseURL: 'https://some-domain.com/api/',
+    timeout: 1000,
+    headers: {'X-Custom-Header': 'foobar'}
+})
+```
+
+##### 3.2.2 实例方法
+
+- axios#request(config)
+- axios#get(url[, config])
+- axios#delete(url[, config])
+- axios.head(url[, config])
+- axios.options(url[, config])
+- axios.post(url[, data[, config]])
+- axios.put(url[, data[, config]])
+- axios.patch(url[, data[, config]])
+
+##### 3.2.3 请求配置
+
+这些是创建请求时可以用的配置选项。只有 `url` 是必需的。如果没有指定 `method`，请求将默认使用 `get` 方法。
+
+```javascript
+{
+    // 'url'是用于请求的服务器URL
+    url: '/user',
+    // 'method'是创建请求时使用的方法
+    method: 'get',// default
+    // 'baseURL'将自动加在'url'前面，除非'url'是一个绝对URL
+    // 它可以通过设置一个 `baseURL` 便于为 axios 实例的方法传递相对 URL    
+    baseURL: 'https://some-domain.com/api/',
+     // `transformRequest` 允许在向服务器发送前，修改请求数据
+        
+     // 只能用在 'PUT', 'POST' 和 'PATCH' 这几个请求方法
+     // 后面数组中的函数必须返回一个字符串，或 ArrayBuffer，或 Stream
+    transformRequest: [function (data, headers) {
+     // 对 data 进行任意转换处理
+       return data;
+    }],
+
+     // `transformResponse` 在传递给 then/catch 前，允许修改响应数据
+    transformResponse: [function (data) {
+        // 对 data 进行任意转换处理
+      return data;
+    }],
+    
+    // 'headers'是即将被发送的自定义请求头
+    headers: {'X-Request-With': 'XMLHttpRequest'},
+    
+    // 'params'是即将与请求一起发送的URL参数
+    // 必须是一个无格式对象（plain object）或URLSearchParams对象
+    params: {
+        ID: 123456
+    },
+    // ...    
+}
+```
 
 #### 3.3 axios的相关配置
 
-#### 3.4 axios的创建实例
+##### 3.3.1 全局axios默认值
 
-#### 3.5 axios的封装
+```javascript
+axios.defaults.baseURL='https://api.example.com';
+axios.defaults.headers.common['Authorization']=AUTH_TOKEN;
+axios.defaults.headers.post['Content-Type']='application/x-www-form-urlencoded';
+```
+
+##### 3.3.2 配置的优先顺序
+
+配置会以一个优先顺序进行合并；这个顺序是：在`lib/defaults.js`找到的库的默认值，然后是实例的`defaults`属性，最后是请求的`config`参数。后者优先前者：
+
+```javascript
+// 使用由库提供的配置的默认值来创建实例
+// 此时超时配置的默认是‘0’
+var instance = axios.create();
+
+// 复写库的超时默认值
+instance.defaults.timeout=2500;
+
+// 为已知需要花费很长时间的请求复写超时设置
+instance.get('/longRequest', {
+    timeout: 5000
+})
+```
+
+##### 3.3.3 拦截器
+
+在请求或响应被`then`或`catch`处理前拦截
+
+```javascript
+// 添加请求拦截器
+axios.interceptors.request.use(function(config){
+    // 在发送请求之前做些什么
+    return config;
+}, function(error){
+    // 对请求错误做些什么
+    return Promise.reject(error);
+})
+
+// 添加响应拦截器
+axios.interceptors.response.use(function(response){
+    // 对响应数据做些什么
+    return response;
+}, function(error){
+    // 对响应错误做些什么
+    return Promise.reject(error);
+})
+```
+
+如果你想在稍后移除拦截器：
+
+```javascript
+axios.interceptors.request.eject(myInterceptors)
+```
+
+#### 3.4 axios的封装
+
+项目在开发过程中考虑到引入第三方框架是带来的风险（第三方框架不再维护，需要寻找替代方案），这个时候不适于在项目中直接引用第三方框架；而是封装一层代理引用：
+
+```javascript
+import axios from 'axios'
+
+export function request(config) {
+  // 1.创建axios的实例
+  const instance = axios.create({
+    baseURL: 'http://123.207.32.32:8000',
+    timeout: 5000
+  })
+
+  // 2.axios拦截器
+  instance.interceptors.request.use(config => {
+    // 1.config中的一些数据不符合交易需求
+    // 2.在请求过程是展示一个请求的图标
+    // 3.某些网络请求（比如登录--token）， 必须携带一些特殊的信息
+    // console.log(config);
+    // 通过放行
+    return config
+  }, error => {
+    console.log(error);
+  })
+
+  // 相应拦截
+  instance.interceptors.response.use(result => {
+    console.log(result);
+    return result.data
+  }, error => {
+    console.log(error);
+  })
+
+  // 3.发送真正的网络请求
+  return instance(config)
+}
+
+// 引用代理
+import {request} from "./request";
+
+export function getHomeMultidata() {
+  return request({
+    url: '/home/multidata',
+    params: {
+      'userId': 'a123456'
+    },
+    timeout: 2000,
+    auth: {
+      username: 'melody',
+      password: '123456'
+    }
+  })
+}
+```
 
 
 
 ### 四、项目开发
 
 #### 4.1 划分目录结构
+
+
 
 #### 4.2 引用两个css文件（base.css和normalize.css）
 
